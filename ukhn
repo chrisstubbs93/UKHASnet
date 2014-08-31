@@ -1,0 +1,41 @@
+#!/usr/bin/python2
+import serial
+import httplib,urllib
+import sys
+
+origin='CS1' # Change THIS!!
+
+node = serial.Serial('COM19', 115200, timeout=3)
+
+print "Serial port opened"
+
+def upload_data( line ):
+  params = urllib.urlencode({'origin': origin, 'data': line})
+  headers = {"Content-type": "application/x-www-form-urlencoded","Accept": "text/plain"}
+  conn = httplib.HTTPConnection("www.ukhas.net:80")
+  print "Uploading: " + "origin:" + origin + " data:" + line
+  conn.request("POST", "/api/upload", params, headers)
+  response = conn.getresponse()
+  if(response.status!=200):
+    print 'Upload Failed: '+response.read()
+  else:
+    print 'Uploaded'
+  data = response.read()
+  conn.close()
+  return
+try:
+    while 1:
+       try:
+        data_line = node.readline().rstrip()
+        if(data_line.__len__() > 0):
+            print(data_line)
+            if ("tx: " in data_line) or ("rx: " in data_line):
+              upload_data(data_line[data_line.index(' ')+1:])
+            else:
+              upload_data(data_line)
+       except Exception, e:
+           continue
+except KeyboardInterrupt:
+    print "Ctrl+C Detected, quitting.."
+    node.close() # Close serial port
+    sys.exit()
